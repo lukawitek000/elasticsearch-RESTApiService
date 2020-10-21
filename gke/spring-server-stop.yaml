@@ -1,0 +1,60 @@
+---
+apiVersion: "v1"
+kind: "ConfigMap"
+metadata:
+  name: "spring-server-config"
+  namespace: "dev"
+  labels:
+    app: "spring-server"
+data:
+  cluster_nodes: "35.205.38.191:9300"
+  cluser_name: "elasticsearch"
+---
+apiVersion: "extensions/v1beta1"
+kind: "Deployment"
+metadata:
+  name: "spring-server"
+  namespace: "dev"
+  labels:
+    app: "spring-server"
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: "spring-server"
+  template:
+    metadata:
+      labels:
+        app: "spring-server"
+    spec:
+      containers:
+      - name: "spring-server"
+        image: "gcr.io/pbl-apol/spring-server"
+        imagePullPolicy: Always
+        env:
+        - name: "SPRING_DATA_ELASTICSEARCH_CLUSTER-NODES"
+          valueFrom:
+            configMapKeyRef:
+              key: "cluster_nodes"
+              name: "spring-server-config"
+        - name: "SPRING_DATA_ELASTICSEARCH_CLUSTER-NAME"
+          valueFrom:
+            configMapKeyRef:
+              key: "cluser_name"
+              name: "spring-server-config"
+---
+apiVersion: "autoscaling/v1"
+kind: "HorizontalPodAutoscaler"
+metadata:
+  name: "spring-server-hpa"
+  namespace: "dev"
+  labels:
+    app: "spring-server"
+spec:
+  scaleTargetRef:
+    kind: "Deployment"
+    name: "spring-server"
+    apiVersion: "apps/v1beta1"
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
